@@ -59,6 +59,35 @@ export const UI = {
     xp: 'xp',
   },
 
+  // Deposit / Transactions
+  deposit: {
+    title: 'DEPOSITAR',
+    balance: 'Balance',
+    approving: 'Aprobando...',
+    depositing: 'Depositando...',
+    success: 'Depósito exitoso',
+    error: 'Error en transacción',
+    cta: 'DEPOSITAR',
+    claim: 'RECLAMAR',
+    claiming: 'Reclamando...',
+    claimSuccess: 'Reclamación exitosa',
+    selectCoin: 'Seleccionar moneda',
+    enterAmount: 'Ingresa un monto',
+    insufficientBalance: 'Balance insuficiente',
+    yourDeposit: 'Tu depósito',
+    payout: 'Pago',
+    won: '¡Ganaste!',
+    lost: 'No ganaste',
+    retry: 'Reintentar',
+  },
+
+  // Wallet
+  wallet: {
+    connect: 'Conectar',
+    connecting: 'Conectando...',
+    disconnect: 'Desconectar',
+  },
+
   // Common
   common: {
     backToHome: '← BACK TO HOME',

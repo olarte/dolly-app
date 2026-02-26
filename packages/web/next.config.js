@@ -5,6 +5,17 @@ const withSerwist = require('@serwist/next').default({
 })
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {}
+const nextConfig = {
+  webpack: (config) => {
+    // Optional peer deps of wagmi connectors — not needed
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      porto: false,
+      'porto/internal': false,
+      '@react-native-async-storage/async-storage': false,
+    }
+    return config
+  },
+}
 
 module.exports = withSerwist(nextConfig)
