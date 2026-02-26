@@ -1,130 +1,100 @@
+'use client'
+
+import { useState } from 'react'
+import { useParams } from 'next/navigation'
 import BackHeader from '@/components/layout/BackHeader'
 import BottomNav from '@/components/layout/BottomNav'
+import MarketHeader from '@/components/market/MarketHeader'
+import ProbabilityChart from '@/components/market/ProbabilityChart'
+import MultiplierCards from '@/components/home/MultiplierCards'
+import RulesSection from '@/components/market/RulesSection'
+import HoldersTab from '@/components/market/HoldersTab'
+import ActivityTab from '@/components/market/ActivityTab'
+import { useMockMarketDetail } from '@/hooks/useMockMarketDetail'
+import { formatCurrency } from '@/lib/utils'
+import { UI } from '@/lib/strings'
 
 export default function MarketDetailPage() {
+  const params = useParams()
+  const id = typeof params.id === 'string' ? params.id : 'monthly-1'
+  const data = useMockMarketDetail(id)
+  const [activeTab, setActiveTab] = useState<'holders' | 'activity'>('holders')
+
   return (
     <>
-      <BackHeader price="$3,648.87" priceUp />
+      <BackHeader
+        price={formatCurrency(data.price)}
+        priceUp={data.priceUp}
+      />
 
       <main className="px-5 pb-28">
         {/* Market Type Badge */}
-        <section className="mt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📅</span>
-            <div>
-              <p className="text-xs font-semibold text-text-secondary tracking-wider">
-                MERCADO MENSUAL
-              </p>
-              <p className="text-xs text-text-muted">MARZO, 2026</p>
-            </div>
-          </div>
-        </section>
+        <MarketHeader
+          icon={data.icon}
+          typeLabel={data.typeLabel}
+          dateLabel={data.dateLabel}
+        />
 
         {/* Market Question */}
-        <section className="mt-4">
-          <h1 className="text-xl font-bold text-text-primary leading-tight">
-            ¿El dólar cerrará este mes más alto que el mes pasado?
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            Precio de referencia TRM
-          </p>
-        </section>
+        <h1 className="text-[22px] font-bold text-text-primary leading-tight mt-4">
+          {data.question}
+        </h1>
 
-        {/* Probability Chart Placeholder */}
-        <section className="mt-5">
-          <div className="bg-white/80 rounded-2xl p-4 shadow-card">
-            <div className="flex justify-between text-sm font-semibold mb-3">
-              <span className="text-sube-green">SUBE 65%</span>
-              <span className="text-baja-red">BAJA 35%</span>
-            </div>
-            <div className="h-32 bg-gradient-to-b from-sube-bg to-baja-bg rounded-xl flex items-center justify-center">
-              <span className="text-xs text-text-muted">
-                Probability chart — Session 3
-              </span>
-            </div>
-            <div className="flex gap-2 mt-3">
-              {['1D', '1W', '2W', 'ALL'].map((range) => (
-                <button
-                  key={range}
-                  className="text-xs px-3 py-1 rounded-full bg-black/5 text-text-secondary font-medium"
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* Reference Price */}
+        <p className="text-[13px] text-text-muted mt-1.5">
+          {data.referenceLabel}:{' '}
+          <span className={data.referencePriceUp ? 'text-sube-green' : 'text-baja-red'}>
+            {data.referencePriceUp ? '↗' : '↘'}
+          </span>
+          <span className="font-semibold text-text-secondary tabular-nums">
+            {formatCurrency(data.referencePrice)}
+          </span>
+        </p>
 
-        {/* SUBE / BAJA Cards */}
-        <section className="flex gap-3 mt-5">
-          <div className="flex-1 bg-sube-bg rounded-3xl p-5 text-center">
-            <p className="text-sm font-semibold text-sube-green">SUBE ↗</p>
-            <p className="text-3xl font-bold text-sube-green tabular-nums mt-2">
-              1.58x
-            </p>
-            <p className="text-xs text-text-muted mt-2 tabular-nums">
-              POOL: $1.0M
-            </p>
-          </div>
-          <div className="flex-1 bg-baja-bg rounded-3xl p-5 text-center">
-            <p className="text-sm font-semibold text-baja-red">BAJA ↘</p>
-            <p className="text-3xl font-bold text-baja-red tabular-nums mt-2">
-              2.38x
-            </p>
-            <p className="text-xs text-text-muted mt-2 tabular-nums">
-              POOL: $1.0M
-            </p>
-          </div>
-        </section>
+        {/* Probability Chart */}
+        <ProbabilityChart
+          data={data.probabilityData}
+          subePercent={data.subePercent}
+          bajaPercent={data.bajaPercent}
+          volume={data.volume}
+        />
+
+        {/* SUBE / BAJA Multiplier Cards — reuse home component */}
+        <MultiplierCards sube={data.sube} baja={data.baja} />
 
         {/* Rules Section */}
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold text-text-primary tracking-wider mb-4">
-            RULES
-          </h2>
-          <div className="space-y-3 text-sm text-text-secondary">
-            <div className="flex justify-between">
-              <span className="text-text-muted">Periodo</span>
-              <span className="font-medium text-text-primary">Marzo 1-31, 2026</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Fecha de cierre</span>
-              <span className="font-medium text-text-primary">Mar 31, 5:00PM</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Tiempo de resolución</span>
-              <span className="font-medium text-text-primary">Abr 1, 10:00AM</span>
-            </div>
-          </div>
-          <p className="text-xs text-text-muted mt-4 leading-relaxed">
-            El mercado resuelve basado en la TRM oficial publicada por el Banco de la
-            República de Colombia. SUBE gana si la TRM de cierre es mayor que la TRM de
-            apertura del periodo. BAJA gana si es menor o igual.
-          </p>
-        </section>
+        <RulesSection rules={data.rules} />
 
         {/* Holders / Activity Tabs */}
-        <section className="mt-8">
+        <section className="mt-8 mb-4">
           <div className="flex border-b border-black/10">
-            <button className="flex-1 py-3 text-sm font-semibold text-text-primary border-b-2 border-text-primary">
-              HOLDERS
+            <button
+              onClick={() => setActiveTab('holders')}
+              className={`flex-1 py-3 text-[13px] font-bold tracking-wider transition-colors ${
+                activeTab === 'holders'
+                  ? 'text-text-primary border-b-2 border-text-primary'
+                  : 'text-text-muted'
+              }`}
+            >
+              {UI.market.holders}
             </button>
-            <button className="flex-1 py-3 text-sm font-semibold text-text-muted">
-              ACTIVITY
+            <button
+              onClick={() => setActiveTab('activity')}
+              className={`flex-1 py-3 text-[13px] font-bold tracking-wider transition-colors ${
+                activeTab === 'activity'
+                  ? 'text-text-primary border-b-2 border-text-primary'
+                  : 'text-text-muted'
+              }`}
+            >
+              {UI.market.activity}
             </button>
           </div>
-          <div className="mt-4 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-sube-green font-semibold">SUBE ↗</span>
-              <span className="tabular-nums">234 holders</span>
-              <span className="tabular-nums text-text-muted">65%</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-baja-red font-semibold">BAJA ↘</span>
-              <span className="tabular-nums">126 holders</span>
-              <span className="tabular-nums text-text-muted">35%</span>
-            </div>
-          </div>
+
+          {activeTab === 'holders' ? (
+            <HoldersTab holders={data.holders} />
+          ) : (
+            <ActivityTab activity={data.activity} />
+          )}
         </section>
       </main>
 
