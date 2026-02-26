@@ -1,7 +1,7 @@
 'use client'
 
 import { useReadContract, useReadContracts } from 'wagmi'
-import { formatUnits, type Address } from 'viem'
+import { formatUnits, keccak256, stringToHex, type Address } from 'viem'
 import { MARKET_ABI, MARKET_FACTORY_ABI, MARKET_FACTORY_ADDRESS } from '@/lib/contracts'
 
 // Outcome enum matches Solidity: 0=UNRESOLVED, 1=UP, 2=DOWN
@@ -174,15 +174,9 @@ export function useMarketList(currencyPair: string) {
   }
 }
 
-// Helper: convert "USD/COP" to bytes32
+// Helper: convert "USD/COP" to bytes32 — must match Solidity keccak256(toUtf8Bytes(pair))
 function currencyPairToBytes32(pair: string): `0x${string}` {
-  const encoder = new TextEncoder()
-  const bytes = encoder.encode(pair)
-  const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-    .padEnd(64, '0')
-  return `0x${hex}` as `0x${string}`
+  return keccak256(stringToHex(pair))
 }
 
 export { currencyPairToBytes32 }
