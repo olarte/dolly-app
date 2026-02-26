@@ -28,6 +28,8 @@ export const UI = {
     period: 'Periodo',
     closeDate: 'Fecha de cierre',
     resolutionTime: 'Tiempo de resolución',
+    resolutionSource: 'Fuente de Resolución',
+    volume: 'VOL',
   },
 
   // Market types
@@ -43,6 +45,8 @@ export const UI = {
     backToHome: '← BACK TO HOME',
     title: 'NOTICIAS Y ANÁLISIS',
     keyNews: 'NOTICIAS CLAVES',
+    opening: 'Apertura:',
+    volume: 'VOL',
   },
 
   // Leaderboard
