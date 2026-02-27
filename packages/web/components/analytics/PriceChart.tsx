@@ -9,16 +9,18 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts'
-import type { PricePoint } from '@/hooks/useMockAnalyticsData'
+import type { PricePoint } from '@/hooks/usePrice'
 
-const TIME_RANGES = ['1D', '5D', '1W', '1M', '1Y', '5Y', 'ALL'] as const
+const TIME_RANGES = ['1D', '5D', '1M', '1Y'] as const
 
 interface PriceChartProps {
   data: PricePoint[]
   volume: string
+  onRangeChange?: (range: string) => void
+  isLoading?: boolean
 }
 
-export default function PriceChart({ data, volume }: PriceChartProps) {
+export default function PriceChart({ data, volume, onRangeChange, isLoading }: PriceChartProps) {
   const [activeRange, setActiveRange] = useState<string>('1D')
 
   // Calculate Y domain with some padding
@@ -31,10 +33,18 @@ export default function PriceChart({ data, volume }: PriceChartProps) {
     .map((d, i) => (d.time ? i : null))
     .filter((i): i is number => i !== null)
 
+  const handleRangeClick = (range: string) => {
+    setActiveRange(range)
+    onRangeChange?.(range)
+  }
+
   return (
     <section className="mt-5">
       {/* Chart */}
-      <div className="h-48">
+      <div
+        className="h-48 transition-opacity duration-200"
+        style={{ opacity: isLoading ? 0.5 : 1 }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
@@ -105,7 +115,7 @@ export default function PriceChart({ data, volume }: PriceChartProps) {
           {TIME_RANGES.map((range) => (
             <button
               key={range}
-              onClick={() => setActiveRange(range)}
+              onClick={() => handleRangeClick(range)}
               className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition-colors ${
                 activeRange === range
                   ? 'bg-text-primary text-white'

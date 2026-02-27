@@ -47,7 +47,7 @@ export default function TopThreePodium({ users }: TopThreePodiumProps) {
               </div>
 
               {/* Name + flag */}
-              <p className="text-[12px] font-bold text-text-primary mt-2 text-center leading-tight">
+              <p className="text-[12px] font-bold text-text-primary mt-2 text-center leading-tight truncate max-w-[90px]">
                 {user.name}
               </p>
               <p className="text-[11px] text-text-muted leading-none mt-0.5">

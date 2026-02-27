@@ -88,6 +88,30 @@ export const UI = {
     disconnect: 'Desconectar',
   },
 
+  // Errors
+  errors: {
+    generic: 'Algo salió mal',
+    network: 'Error de conexión',
+    retry: 'Reintentar',
+    priceUnavailable: 'Precio no disponible',
+  },
+
+  // Empty states
+  empty: {
+    noMarkets: 'No hay mercados activos',
+    noPrice: 'No hay datos de precio',
+    noNews: 'No hay noticias',
+    noPlayers: 'No hay jugadores aún',
+    noActivity: 'No hay actividad reciente',
+  },
+
+  // Pull to refresh
+  refresh: {
+    pulling: 'Tira para actualizar',
+    release: 'Suelta para actualizar',
+    loading: 'Actualizando...',
+  },
+
   // Common
   common: {
     backToHome: '← BACK TO HOME',

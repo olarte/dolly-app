@@ -1,4 +1,4 @@
-import type { NewsItem } from '@/hooks/useMockAnalyticsData'
+import type { NewsItem } from '@/hooks/useNews'
 import { UI } from '@/lib/strings'
 
 interface NewsFeedProps {

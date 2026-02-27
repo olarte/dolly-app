@@ -1,5 +1,7 @@
 'use client'
 
+import { useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
 import BottomNav from '@/components/layout/BottomNav'
 import LivePrice from '@/components/home/LivePrice'
@@ -9,15 +11,24 @@ import MultiplierCards from '@/components/home/MultiplierCards'
 import MarketCarousel from '@/components/home/MarketCarousel'
 import DepositModal from '@/components/shared/DepositModal'
 import StablecoinSelector from '@/components/shared/StablecoinSelector'
+import PullToRefresh from '@/components/shared/PullToRefresh'
+import { SkeletonLivePrice, SkeletonMultiplierCards } from '@/components/shared/Skeleton'
+import EmptyState from '@/components/shared/EmptyState'
 import { useMockMarketData } from '@/hooks/useMockMarketData'
+import { usePrice } from '@/hooks/usePrice'
 import { useMarket, useMarketList } from '@/hooks/useMarket'
 import { useDollyStore } from '@/lib/store'
 import { CURRENCIES } from '@/lib/currencies'
+import { UI } from '@/lib/strings'
 
 export default function HomePage() {
   const mockData = useMockMarketData()
   const { currencyCode, openDepositModal } = useDollyStore()
   const currency = CURRENCIES[currencyCode]
+  const queryClient = useQueryClient()
+
+  // Live price from API
+  const livePrice = usePrice(currency?.pair ?? 'USD/COP')
 
   // Try to get live markets from factory
   const { markets: liveMarkets } = useMarketList(currency?.pair ?? 'USD/COP')
@@ -34,6 +45,11 @@ export default function HomePage() {
     : mockData.baja
   const targetTime = hasLiveData ? liveMarket.bettingCloseTime : mockData.targetTime
 
+  // Use live price if available, else mock
+  const price = livePrice.price > 0 ? livePrice.price : mockData.price
+  const priceUp = livePrice.price > 0 ? livePrice.priceUp : mockData.priceUp
+  const openingPrice = livePrice.openingPrice > 0 ? livePrice.openingPrice : mockData.openingPrice
+
   const handleSubeClick = () => {
     if (dailyMarketAddress) {
       openDepositModal(dailyMarketAddress, 'sube')
@@ -45,26 +61,44 @@ export default function HomePage() {
     }
   }
 
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['price'] })
+  }, [queryClient])
+
   return (
     <>
       <Header />
 
-      <main className="px-5 pb-28">
-        <LivePrice price={mockData.price} priceUp={mockData.priceUp} />
-        <CountdownTimer
-          openingPrice={mockData.openingPrice}
-          priceUp={mockData.priceUp}
-          targetTime={targetTime}
-        />
-        <DailyMarketCard question={mockData.question} />
-        <MultiplierCards
-          sube={sube}
-          baja={baja}
-          onSubeClick={handleSubeClick}
-          onBajaClick={handleBajaClick}
-        />
-        <MarketCarousel markets={mockData.markets} />
-      </main>
+      <PullToRefresh onRefresh={handleRefresh}>
+        <main className="px-5 pb-28">
+          {livePrice.isLoading && livePrice.price === 0 ? (
+            <>
+              <SkeletonLivePrice />
+              <SkeletonMultiplierCards />
+            </>
+          ) : (
+            <>
+              <LivePrice price={price} priceUp={priceUp} />
+              <CountdownTimer
+                openingPrice={openingPrice}
+                priceUp={priceUp}
+                targetTime={targetTime}
+              />
+              <DailyMarketCard question={mockData.question} />
+              <MultiplierCards
+                sube={sube}
+                baja={baja}
+                onSubeClick={handleSubeClick}
+                onBajaClick={handleBajaClick}
+              />
+              <MarketCarousel markets={mockData.markets} />
+              {!hasLiveData && !liveMarkets.length && (
+                <EmptyState message={UI.empty.noMarkets} icon="📊" />
+              )}
+            </>
+          )}
+        </main>
+      </PullToRefresh>
 
       <DepositModal />
       <StablecoinSelector />
