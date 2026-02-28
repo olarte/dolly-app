@@ -21,6 +21,7 @@ import StablecoinSelector from '@/components/shared/StablecoinSelector'
 import TransactionStatus from '@/components/shared/TransactionStatus'
 import { useMockMarketDetail } from '@/hooks/useMockMarketDetail'
 import { useMarket, useUserDeposit, type MarketOutcome } from '@/hooks/useMarket'
+import { usePrice } from '@/hooks/usePrice'
 import { useClaim } from '@/hooks/useClaim'
 import { useDollyStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils'
@@ -42,6 +43,9 @@ export default function MarketDetailPage() {
   const { claim, status: claimStatus, error: claimError, txHash: claimTxHash, reset: resetClaim } = useClaim(
     marketAddress ?? ('0x0000000000000000000000000000000000000000' as Address)
   )
+
+  // Live price from API
+  const livePrice = usePrice('USD/COP')
 
   // Mock data fallback
   const mockData = useMockMarketDetail(id)
@@ -85,8 +89,8 @@ export default function MarketDetailPage() {
   return (
     <>
       <BackHeader
-        price={formatCurrency(mockData.price)}
-        priceUp={mockData.priceUp}
+        price={livePrice.price > 0 ? formatCurrency(livePrice.price) : formatCurrency(mockData.price)}
+        priceUp={livePrice.price > 0 ? livePrice.priceUp : mockData.priceUp}
       />
 
       <main className="px-5 pb-28">

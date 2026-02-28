@@ -107,7 +107,38 @@ export async function getCurrentPrice(pair: string): Promise<number> {
 }
 
 export async function getOpenPrice(pair: string): Promise<number> {
-  return fetchRate(pair)
+  const cacheKey = `open:${pair}`
+  const cached = priceCache.get(cacheKey)
+  // Cache opening price for 5 minutes (it only changes once a day)
+  if (cached && Date.now() - cached.fetchedAt < 300_000) {
+    return cached.rate
+  }
+
+  try {
+    if (!TWELVE_DATA_KEY) throw new Error('No Twelve Data API key')
+
+    // Fetch today's daily candle to get the real opening price
+    const res = await fetch(
+      `${TWELVE_DATA_BASE}/time_series?symbol=${pair}&interval=1day&outputsize=1&format=JSON&apikey=${TWELVE_DATA_KEY}`,
+      { next: { revalidate: 300 } }
+    )
+
+    if (!res.ok) throw new Error(`Twelve Data error: ${res.status}`)
+    const data = await res.json()
+
+    if (data.code || data.status === 'error' || !data.values?.length) {
+      throw new Error(data.message || 'No daily data')
+    }
+
+    const openPrice = parseFloat(data.values[0].open)
+    if (isNaN(openPrice)) throw new Error('Invalid open price')
+
+    priceCache.set(cacheKey, { rate: openPrice, fetchedAt: Date.now() })
+    return openPrice
+  } catch {
+    // Fallback: return current price (opening price not available)
+    return fetchRate(pair)
+  }
 }
 
 export async function getClosePrice(pair: string): Promise<number> {
