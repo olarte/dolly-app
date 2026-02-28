@@ -6,13 +6,18 @@ import {
   stringToHex,
   type Address,
 } from 'viem'
-import { celo } from 'viem/chains'
+import { celo, celoSepolia } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 
-const rpcUrl = process.env.NEXT_PUBLIC_CELO_RPC || 'https://forno.celo.org'
+const isTestnet = process.env.NEXT_PUBLIC_USE_TESTNET === 'true'
+const activeChain = isTestnet ? celoSepolia : celo
+
+const rpcUrl = isTestnet
+  ? (process.env.NEXT_PUBLIC_CELO_SEPOLIA_RPC || 'https://forno.celo-sepolia.celo-testnet.org')
+  : (process.env.NEXT_PUBLIC_CELO_RPC || 'https://forno.celo.org')
 
 export const publicClient = createPublicClient({
-  chain: celo,
+  chain: activeChain,
   transport: http(rpcUrl),
 })
 
@@ -26,7 +31,7 @@ export function getWalletClient() {
   const account = privateKeyToAccount(pk as `0x${string}`)
   return createWalletClient({
     account,
-    chain: celo,
+    chain: activeChain,
     transport: http(rpcUrl),
   })
 }

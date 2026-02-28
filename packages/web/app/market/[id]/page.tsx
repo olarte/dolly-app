@@ -3,11 +3,16 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import dynamic from 'next/dynamic'
 import BackHeader from '@/components/layout/BackHeader'
 import BottomNav from '@/components/layout/BottomNav'
 import MarketHeader from '@/components/market/MarketHeader'
-import ProbabilityChart from '@/components/market/ProbabilityChart'
 import MultiplierCards from '@/components/home/MultiplierCards'
+
+const ProbabilityChart = dynamic(() => import('@/components/market/ProbabilityChart'), {
+  ssr: false,
+  loading: () => <div className="h-[200px] mt-6 rounded-2xl bg-white/60 animate-pulse" />,
+})
 import RulesSection from '@/components/market/RulesSection'
 import HoldersTab from '@/components/market/HoldersTab'
 import ActivityTab from '@/components/market/ActivityTab'

@@ -7,12 +7,40 @@ const MAINNET_TOKENS = {
   USDT: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e",
 };
 
-// Celo Alfajores testnet stablecoin addresses
-const ALFAJORES_TOKENS = {
-  cUSD: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
-  USDC: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
-  USDT: "0xE4D517785D091D3c54818832dB6094bcc2744545",
-};
+async function deployMockTokens(deployerAddress: string) {
+  console.log("Deploying mock stablecoins for testnet...\n");
+
+  const MockERC20 = await ethers.getContractFactory("MockERC20");
+
+  const cUSD = await MockERC20.deploy("Mock cUSD", "cUSD", 18);
+  await cUSD.waitForDeployment();
+  const cUSDAddr = await cUSD.getAddress();
+  console.log(`  Mock cUSD (18 dec): ${cUSDAddr}`);
+
+  const USDC = await MockERC20.deploy("Mock USDC", "USDC", 6);
+  await USDC.waitForDeployment();
+  const USDCAddr = await USDC.getAddress();
+  console.log(`  Mock USDC (6 dec):  ${USDCAddr}`);
+
+  const USDT = await MockERC20.deploy("Mock USDT", "USDT", 6);
+  await USDT.waitForDeployment();
+  const USDTAddr = await USDT.getAddress();
+  console.log(`  Mock USDT (6 dec):  ${USDTAddr}`);
+
+  // Mint 10,000 of each to deployer for testing
+  const mintAmount18 = ethers.parseUnits("10000", 18);
+  const mintAmount6 = ethers.parseUnits("10000", 6);
+
+  await (await cUSD.mint(deployerAddress, mintAmount18)).wait();
+  await (await USDC.mint(deployerAddress, mintAmount6)).wait();
+  await (await USDT.mint(deployerAddress, mintAmount6)).wait();
+  console.log(`  Minted 10,000 of each to ${deployerAddress}\n`);
+
+  return {
+    tokens: [cUSDAddr, USDCAddr, USDTAddr],
+    addresses: { cUSD: cUSDAddr, USDC: USDCAddr, USDT: USDTAddr },
+  };
+}
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -30,12 +58,17 @@ async function main() {
 
   // Select token addresses based on network
   let tokens: string[];
+  let mockAddresses: { cUSD: string; USDC: string; USDT: string } | null = null;
+
   if (networkName === "celo") {
     tokens = [MAINNET_TOKENS.cUSD, MAINNET_TOKENS.USDC, MAINNET_TOKENS.USDT];
     console.log("Using Celo Mainnet token addresses");
-  } else if (networkName === "alfajores") {
-    tokens = [ALFAJORES_TOKENS.cUSD, ALFAJORES_TOKENS.USDC, ALFAJORES_TOKENS.USDT];
-    console.log("Using Alfajores testnet token addresses");
+  } else if (networkName === "celo-sepolia") {
+    // Deploy mock tokens on testnet
+    const result = await deployMockTokens(deployer.address);
+    tokens = result.tokens;
+    mockAddresses = result.addresses;
+    console.log("Using mock testnet token addresses");
   } else {
     console.log("Local network — skipping market creation (no real tokens)");
     console.log("\n──────────────────────────────────────");
@@ -76,11 +109,20 @@ async function main() {
   console.log("Deployment Summary:");
   console.log(`  MarketFactory: ${factoryAddr}`);
   console.log(`  USD/COP Daily: ${marketAddr}`);
+  if (mockAddresses) {
+    console.log(`  Mock cUSD:     ${mockAddresses.cUSD}`);
+    console.log(`  Mock USDC:     ${mockAddresses.USDC}`);
+    console.log(`  Mock USDT:     ${mockAddresses.USDT}`);
+  }
   console.log("──────────────────────────────────────\n");
 
   // Verification hint
-  console.log("To verify on CeloScan:");
-  console.log(`  npx hardhat verify --network ${networkName} ${factoryAddr}`);
+  if (networkName === "celo") {
+    console.log("To verify on CeloScan:");
+    console.log(`  npx hardhat verify --network ${networkName} ${factoryAddr}`);
+  } else {
+    console.log("Testnet explorer: https://sepolia.celoscan.io/");
+  }
 }
 
 main().catch((error) => {

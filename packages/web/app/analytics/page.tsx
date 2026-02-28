@@ -2,10 +2,15 @@
 
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import BackHeader from '@/components/layout/BackHeader'
 import BottomNav from '@/components/layout/BottomNav'
-import PriceChart from '@/components/analytics/PriceChart'
 import NewsFeed from '@/components/analytics/NewsFeed'
+
+const PriceChart = dynamic(() => import('@/components/analytics/PriceChart'), {
+  ssr: false,
+  loading: () => <div className="h-[280px] mt-4 rounded-2xl bg-white/60 animate-pulse" />,
+})
 import PullToRefresh from '@/components/shared/PullToRefresh'
 import ErrorState from '@/components/shared/ErrorState'
 import EmptyState from '@/components/shared/EmptyState'

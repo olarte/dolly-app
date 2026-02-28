@@ -51,7 +51,9 @@ export default function TransactionStatus({
             ? (successMessage ?? UI.deposit.success)
             : error ?? UI.deposit.error
 
-  const celoscanUrl = txHash ? `https://celoscan.io/tx/${txHash}` : null
+  const isTestnet = process.env.NEXT_PUBLIC_USE_TESTNET === 'true'
+  const explorerBase = isTestnet ? 'https://sepolia.celoscan.io' : 'https://celoscan.io'
+  const celoscanUrl = txHash ? `${explorerBase}/tx/${txHash}` : null
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[398px]">

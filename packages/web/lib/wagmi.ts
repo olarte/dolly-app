@@ -1,12 +1,24 @@
 import { http } from 'wagmi'
-import { celo } from 'viem/chains'
+import { celo, celoSepolia } from 'viem/chains'
 import { createConfig } from '@privy-io/wagmi'
 
-export const wagmiConfig = createConfig({
-  chains: [celo],
-  transports: {
-    [celo.id]: http(
-      process.env.NEXT_PUBLIC_CELO_RPC || 'https://forno.celo.org'
-    ),
-  },
-})
+const isTestnet = process.env.NEXT_PUBLIC_USE_TESTNET === 'true'
+export const activeChain = isTestnet ? celoSepolia : celo
+
+const rpcUrl = isTestnet
+  ? (process.env.NEXT_PUBLIC_CELO_SEPOLIA_RPC || 'https://forno.celo-sepolia.celo-testnet.org')
+  : (process.env.NEXT_PUBLIC_CELO_RPC || 'https://forno.celo.org')
+
+export const wagmiConfig = isTestnet
+  ? createConfig({
+      chains: [celoSepolia],
+      transports: {
+        [celoSepolia.id]: http(rpcUrl),
+      },
+    })
+  : createConfig({
+      chains: [celo],
+      transports: {
+        [celo.id]: http(rpcUrl),
+      },
+    })

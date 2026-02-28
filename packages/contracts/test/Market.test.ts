@@ -613,6 +613,170 @@ describe("Market", function () {
     });
   });
 
+  // ──────────────────────── Price Validation ───────────────
+
+  describe("Price Validation", function () {
+    it("rejects UP outcome when closePrice <= openPrice", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(1, 4250_00, 4200_00, "src") // close < open but UP
+      ).to.be.revertedWith("Price mismatch for UP");
+    });
+
+    it("rejects UP outcome when closePrice == openPrice", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(1, 4200_00, 4200_00, "src") // close == open but UP
+      ).to.be.revertedWith("Price mismatch for UP");
+    });
+
+    it("rejects DOWN outcome when closePrice >= openPrice", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(2, 4200_00, 4250_00, "src") // close > open but DOWN
+      ).to.be.revertedWith("Price mismatch for DOWN");
+    });
+
+    it("rejects DOWN outcome when closePrice == openPrice", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(2, 4200_00, 4200_00, "src") // close == open but DOWN
+      ).to.be.revertedWith("Price mismatch for DOWN");
+    });
+
+    it("accepts valid UP resolution (close > open)", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(1, 4200_00, 4250_00, "src")
+      ).to.emit(market, "Resolved");
+    });
+
+    it("accepts valid DOWN resolution (close < open)", async function () {
+      const { market, owner, resolution } = await loadFixture(deployMarketFixture);
+      await time.increaseTo(resolution);
+
+      await expect(
+        market.connect(owner).resolve(2, 4250_00, 4200_00, "src")
+      ).to.emit(market, "Resolved");
+    });
+  });
+
+  // ──────────────────────── Emergency Refund ──────────────
+
+  describe("Emergency Refund", function () {
+    it("allows refund after 7-day grace period", async function () {
+      const { market, cUSD, alice, resolution } = await loadFixture(deployMarketFixture);
+      const cUSDAddr = await cUSD.getAddress();
+
+      await market.connect(alice).depositUp(cUSDAddr, ethers.parseUnits("100", 18));
+
+      // Advance past resolution + 7 days
+      await time.increaseTo(resolution + 7 * 24 * 3600);
+
+      const balBefore = await cUSD.balanceOf(alice.address);
+      await expect(market.connect(alice).emergencyRefund())
+        .to.emit(market, "Refunded")
+        .withArgs(alice.address, cUSDAddr, ethers.parseUnits("100", 18));
+      const balAfter = await cUSD.balanceOf(alice.address);
+
+      expect(balAfter - balBefore).to.equal(ethers.parseUnits("100", 18));
+      expect(await market.totalUp()).to.equal(0);
+      expect(await market.userDepositsUp(alice.address)).to.equal(0);
+    });
+
+    it("refunds both UP and DOWN deposits", async function () {
+      const { market, cUSD, alice, resolution } = await loadFixture(deployMarketFixture);
+      const cUSDAddr = await cUSD.getAddress();
+
+      await market.connect(alice).depositUp(cUSDAddr, ethers.parseUnits("60", 18));
+      await market.connect(alice).depositDown(cUSDAddr, ethers.parseUnits("40", 18));
+
+      await time.increaseTo(resolution + 7 * 24 * 3600);
+
+      const balBefore = await cUSD.balanceOf(alice.address);
+      await market.connect(alice).emergencyRefund();
+      const balAfter = await cUSD.balanceOf(alice.address);
+
+      expect(balAfter - balBefore).to.equal(ethers.parseUnits("100", 18));
+    });
+
+    it("refunds 6-decimal tokens correctly", async function () {
+      const { market, USDC, bob, resolution } = await loadFixture(deployMarketFixture);
+      const USDCAddr = await USDC.getAddress();
+
+      await market.connect(bob).depositUp(USDCAddr, ethers.parseUnits("100", 6));
+
+      await time.increaseTo(resolution + 7 * 24 * 3600);
+
+      const balBefore = await USDC.balanceOf(bob.address);
+      await market.connect(bob).emergencyRefund();
+      const balAfter = await USDC.balanceOf(bob.address);
+
+      expect(balAfter - balBefore).to.equal(ethers.parseUnits("100", 6));
+    });
+
+    it("reverts before grace period", async function () {
+      const { market, cUSD, alice, resolution } = await loadFixture(deployMarketFixture);
+      const cUSDAddr = await cUSD.getAddress();
+
+      await market.connect(alice).depositUp(cUSDAddr, ethers.parseUnits("100", 18));
+
+      // Only advance to resolution + 6 days (not 7)
+      await time.increaseTo(resolution + 6 * 24 * 3600);
+
+      await expect(market.connect(alice).emergencyRefund())
+        .to.be.revertedWith("Grace period not over");
+    });
+
+    it("reverts if market is resolved", async function () {
+      const { market, cUSD, alice, owner, resolution } = await loadFixture(deployMarketFixture);
+      const cUSDAddr = await cUSD.getAddress();
+
+      await market.connect(alice).depositUp(cUSDAddr, ethers.parseUnits("100", 18));
+
+      await time.increaseTo(resolution);
+      await market.connect(owner).resolve(1, 4200_00, 4250_00, "src");
+
+      // Even after 7 days, can't refund if resolved
+      await time.increase(7 * 24 * 3600);
+
+      await expect(market.connect(alice).emergencyRefund())
+        .to.be.revertedWith("Market resolved");
+    });
+
+    it("reverts if no deposits", async function () {
+      const { market, carol, resolution } = await loadFixture(deployMarketFixture);
+
+      await time.increaseTo(resolution + 7 * 24 * 3600);
+
+      await expect(market.connect(carol).emergencyRefund())
+        .to.be.revertedWith("No deposits");
+    });
+
+    it("cannot refund twice", async function () {
+      const { market, cUSD, alice, resolution } = await loadFixture(deployMarketFixture);
+      const cUSDAddr = await cUSD.getAddress();
+
+      await market.connect(alice).depositUp(cUSDAddr, ethers.parseUnits("100", 18));
+
+      await time.increaseTo(resolution + 7 * 24 * 3600);
+
+      await market.connect(alice).emergencyRefund();
+      await expect(market.connect(alice).emergencyRefund())
+        .to.be.revertedWith("No deposits");
+    });
+  });
+
   // ──────────────────────── View Functions ──────────────────
 
   describe("View Functions", function () {

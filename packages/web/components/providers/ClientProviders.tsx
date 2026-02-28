@@ -4,8 +4,7 @@ import { PrivyProvider } from '@privy-io/react-auth'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from '@privy-io/wagmi'
 import { useState } from 'react'
-import { celo } from 'viem/chains'
-import { wagmiConfig } from '@/lib/wagmi'
+import { wagmiConfig, activeChain } from '@/lib/wagmi'
 import AutoConnect from './AutoConnect'
 
 function InnerProviders({ children }: { children: React.ReactNode }) {
@@ -43,8 +42,8 @@ export default function ClientProviders({ children }: { children: React.ReactNod
     <PrivyProvider
       appId={privyAppId}
       config={{
-        defaultChain: celo,
-        supportedChains: [celo],
+        defaultChain: activeChain,
+        supportedChains: [activeChain],
         appearance: {
           theme: 'light',
           accentColor: '#2e7d32',

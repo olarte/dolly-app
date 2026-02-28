@@ -54,6 +54,11 @@ contract Market is ReentrancyGuard, Ownable {
     event Resolved(Outcome outcome, uint256 openPrice, uint256 closePrice, string sourceId);
     event Claimed(address indexed user, address token, uint256 payout);
     event RakeCollected(address token, uint256 amount);
+    event Refunded(address indexed user, address token, uint256 amount);
+
+    // ──────────────────────────── Constants ───────────────────────────
+
+    uint256 public constant REFUND_GRACE_PERIOD = 7 days;
 
     // ──────────────────────────── Constructor ──────────────────────
 
@@ -153,6 +158,13 @@ contract Market is ReentrancyGuard, Ownable {
         require(_outcome != Outcome.UNRESOLVED, "Invalid outcome");
         require(block.timestamp >= resolutionTime, "Too early");
 
+        // Price sanity check
+        if (_outcome == Outcome.UP) {
+            require(_closePrice > _openPrice, "Price mismatch for UP");
+        } else {
+            require(_closePrice < _openPrice, "Price mismatch for DOWN");
+        }
+
         outcome = _outcome;
         openPrice = _openPrice;
         closePrice = _closePrice;
@@ -208,7 +220,7 @@ contract Market is ReentrancyGuard, Ownable {
     // ──────────────────────────── Rake Withdrawal ──────────────────
 
     /// @notice Owner withdraws remaining token balance (rake) after claims settle.
-    function withdrawRake(address token) external onlyOwner {
+    function withdrawRake(address token) external onlyOwner nonReentrant {
         require(resolved, "Not resolved");
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(balance > 0, "No balance");
@@ -216,6 +228,30 @@ contract Market is ReentrancyGuard, Ownable {
         IERC20(token).safeTransfer(owner(), balance);
 
         emit RakeCollected(token, balance);
+    }
+
+    // ──────────────────────────── Emergency Refund ─────────────────
+
+    /// @notice Users can reclaim deposits if the market stays unresolved 7 days past resolutionTime.
+    function emergencyRefund() external nonReentrant {
+        require(!resolved, "Market resolved");
+        require(block.timestamp >= resolutionTime + REFUND_GRACE_PERIOD, "Grace period not over");
+
+        uint256 upDeposit = userDepositsUp[msg.sender];
+        uint256 downDeposit = userDepositsDown[msg.sender];
+        require(upDeposit > 0 || downDeposit > 0, "No deposits");
+
+        userDepositsUp[msg.sender] = 0;
+        userDepositsDown[msg.sender] = 0;
+        totalUp -= upDeposit;
+        totalDown -= downDeposit;
+
+        address token = userDepositToken[msg.sender];
+        uint256 refundNormalized = upDeposit + downDeposit;
+        uint256 refund = _denormalize(token, refundNormalized);
+
+        IERC20(token).safeTransfer(msg.sender, refund);
+        emit Refunded(msg.sender, token, refund);
     }
 
     // ──────────────────────────── Views ────────────────────────────

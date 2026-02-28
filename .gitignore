@@ -49,3 +49,4 @@ packages/web/public/swe-worker-*.js
 
 # Coverage
 coverage/
+.env*.local
