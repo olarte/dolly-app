@@ -33,7 +33,8 @@ export default function AnalyticsPage() {
 
   // Use live price or fall back to mock
   const price = priceData.price > 0 ? priceData.price : mockData.price
-  const priceUp = priceData.price > 0 ? priceData.priceUp : mockData.priceUp
+  const direction = priceData.price > 0 ? priceData.direction === 'up' : mockData.priceUp
+  const dayUp = priceData.price > 0 ? priceData.priceUp : mockData.priceUp
   const openingPrice = priceData.openingPrice > 0 ? priceData.openingPrice : mockData.openingPrice
   const changePercent = priceData.price > 0 ? priceData.changePercent : mockData.changePercent
 
@@ -78,7 +79,7 @@ export default function AnalyticsPage() {
     <>
       <BackHeader
         price={formatCurrency(price)}
-        priceUp={priceUp}
+        priceUp={direction}
       />
 
       <PullToRefresh onRefresh={handleRefresh}>
@@ -93,8 +94,8 @@ export default function AnalyticsPage() {
           {/* Live Price */}
           <section className="mt-4">
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-lg font-bold ${priceUp ? 'text-sube-green' : 'text-baja-red'}`}>
-                {priceUp ? '↗' : '↘'}
+              <span className={`text-lg font-bold ${direction ? 'text-sube-green' : 'text-baja-red'}`}>
+                {direction ? '↗' : '↘'}
               </span>
               <span className="text-[34px] font-bold tabular-nums text-text-primary leading-none">
                 {formatCurrency(price)}
@@ -104,7 +105,7 @@ export default function AnalyticsPage() {
               <span className="text-[13px] text-text-muted tabular-nums">
                 {UI.analytics.opening} {formatCurrency(openingPrice)}
               </span>
-              <span className={`text-[13px] font-semibold tabular-nums ${priceUp ? 'text-sube-green' : 'text-baja-red'}`}>
+              <span className={`text-[13px] font-semibold tabular-nums ${dayUp ? 'text-sube-green' : 'text-baja-red'}`}>
                 {changePercent}
               </span>
             </div>

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentPrice, getOpenPrice } from '@/lib/price-source'
 
+// Track previous price per pair to determine arrow direction
+const previousPrices = new Map<string, number>()
+
 export async function GET(request: NextRequest) {
   const pair = request.nextUrl.searchParams.get('pair') || 'USD/COP'
 
@@ -10,15 +13,22 @@ export async function GET(request: NextRequest) {
       getOpenPrice(pair),
     ])
 
-    const priceUp = price >= openingPrice
+    // Day change (vs opening)
+    const dayUp = price >= openingPrice
     const changePercent = (((price - openingPrice) / openingPrice) * 100).toFixed(2)
+
+    // Arrow direction (vs previous data point)
+    const prevPrice = previousPrices.get(pair)
+    const direction: 'up' | 'down' = prevPrice !== undefined ? (price >= prevPrice ? 'up' : 'down') : (dayUp ? 'up' : 'down')
+    previousPrices.set(pair, price)
 
     return NextResponse.json(
       {
         price: +price.toFixed(2),
         openingPrice: +openingPrice.toFixed(2),
-        priceUp,
-        changePercent: `${priceUp ? '+' : ''}${changePercent}%`,
+        priceUp: dayUp,
+        direction,
+        changePercent: `${dayUp ? '+' : ''}${changePercent}%`,
         pair,
         updatedAt: new Date().toISOString(),
       },

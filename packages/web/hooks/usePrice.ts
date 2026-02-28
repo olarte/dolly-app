@@ -6,6 +6,7 @@ export interface PriceData {
   price: number
   openingPrice: number
   priceUp: boolean
+  direction: 'up' | 'down'
   changePercent: string
   pair: string
   updatedAt: string
@@ -27,6 +28,7 @@ export function usePrice(pair: string) {
     price: query.data?.price ?? 0,
     openingPrice: query.data?.openingPrice ?? 0,
     priceUp: query.data?.priceUp ?? true,
+    direction: query.data?.direction ?? 'up',
     changePercent: query.data?.changePercent ?? '+0.00%',
     isLoading: query.isLoading,
     isError: query.isError,

@@ -47,7 +47,7 @@ export default function HomePage() {
 
   // Use live price if available, else mock
   const price = livePrice.price > 0 ? livePrice.price : mockData.price
-  const priceUp = livePrice.price > 0 ? livePrice.priceUp : mockData.priceUp
+  const priceUp = livePrice.price > 0 ? livePrice.direction === 'up' : mockData.priceUp
   const openingPrice = livePrice.openingPrice > 0 ? livePrice.openingPrice : mockData.openingPrice
 
   const handleSubeClick = () => {

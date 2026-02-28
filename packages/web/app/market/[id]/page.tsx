@@ -90,7 +90,7 @@ export default function MarketDetailPage() {
     <>
       <BackHeader
         price={livePrice.price > 0 ? formatCurrency(livePrice.price) : formatCurrency(mockData.price)}
-        priceUp={livePrice.price > 0 ? livePrice.priceUp : mockData.priceUp}
+        priceUp={livePrice.price > 0 ? livePrice.direction === 'up' : mockData.priceUp}
       />
 
       <main className="px-5 pb-28">

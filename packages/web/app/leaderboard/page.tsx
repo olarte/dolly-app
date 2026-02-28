@@ -25,7 +25,7 @@ export default function LeaderboardPage() {
   const priceData = usePrice('USD/COP')
 
   const price = priceData.price > 0 ? formatCurrency(priceData.price) : '$3,648.87'
-  const priceUp = priceData.price > 0 ? priceData.priceUp : true
+  const priceUp = priceData.price > 0 ? priceData.direction === 'up' : true
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([
