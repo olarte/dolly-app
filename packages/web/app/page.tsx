@@ -78,6 +78,10 @@ export default function HomePage() {
     refetchInterval: 60_000,
   })
 
+  // Find daily market from API data (for linking to detail page)
+  const apiDailyMarket = (apiMarkets ?? []).find((m) => m.marketType === 0 && m.status === 'active')
+  const apiDailyMarketId = apiDailyMarket?.address
+
   // Build carousel markets: real weekly/monthly from API, fallback to mock
   const carouselMarkets: CarouselMarket[] = (() => {
     const liveNonDaily = (apiMarkets ?? [])
@@ -147,7 +151,10 @@ export default function HomePage() {
                 targetTime={targetTime}
                 marketOpen={marketOpen}
               />
-              <DailyMarketCard question={mockData.question} />
+              <DailyMarketCard
+                question={mockData.question}
+                marketId={dailyMarketAddress ?? apiDailyMarketId}
+              />
               <MultiplierCards
                 sube={sube}
                 baja={baja}

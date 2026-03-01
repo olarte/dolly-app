@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import BackHeader from '@/components/layout/BackHeader'
 import BottomNav from '@/components/layout/BottomNav'
@@ -28,6 +29,46 @@ import { formatCurrency } from '@/lib/utils'
 import { UI } from '@/lib/strings'
 import type { Address } from 'viem'
 
+const MARKET_TYPE_LABELS: Record<number, string> = {
+  0: 'MERCADO DIARIO',
+  1: 'MERCADO SEMANAL',
+  2: 'MERCADO MENSUAL',
+}
+
+const MARKET_TYPE_ICONS: Record<number, string> = {
+  0: '📉',
+  1: '📈',
+  2: '💰',
+}
+
+const MARKET_TYPE_QUESTIONS: Record<number, string> = {
+  0: UI.marketQuestion.daily,
+  1: UI.marketQuestion.weekly,
+  2: UI.marketQuestion.monthly,
+}
+
+function formatDateLabel(isoDate: string, marketType: number): string {
+  const d = new Date(isoDate)
+  if (marketType === 0) {
+    // Daily: "1 DE MARZO, 2026"
+    return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()
+  }
+  if (marketType === 1) {
+    // Weekly: "SEMANA DEL 2 DE MARZO"
+    const start = new Date(d)
+    start.setDate(start.getDate() - 4) // Friday → Monday
+    return `SEMANA DEL ${start.getDate()} DE ${start.toLocaleDateString('es-CO', { month: 'long' }).toUpperCase()}`
+  }
+  // Monthly: "MARZO, 2026"
+  return d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()
+}
+
+interface APIMarketDetail {
+  marketType: number
+  bettingCloseTime: string
+  openingPrice: number | null
+}
+
 export default function MarketDetailPage() {
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : 'monthly-1'
@@ -36,6 +77,19 @@ export default function MarketDetailPage() {
   // Determine if id is a contract address (0x...) or mock id
   const isContractAddress = id.startsWith('0x') && id.length === 42
   const marketAddress = isContractAddress ? (id as Address) : undefined
+
+  // Fetch market metadata from API (gives us marketType for contract addresses)
+  const { data: apiDetail } = useQuery<APIMarketDetail | null>({
+    queryKey: ['marketDetail', id],
+    queryFn: async () => {
+      if (!isContractAddress) return null
+      const res = await fetch(`/api/markets/${id}`)
+      if (!res.ok) return null
+      return res.json()
+    },
+    staleTime: 60_000,
+    enabled: isContractAddress,
+  })
 
   // Live data from contract
   const liveMarket = useMarket(marketAddress)
@@ -47,8 +101,12 @@ export default function MarketDetailPage() {
   // Live price from API
   const livePrice = usePrice('USD/COP')
 
+  // Determine the effective market type for mock data selection
+  const detectedType = apiDetail?.marketType ?? null
+  const mockId = detectedType === 0 ? 'daily-1' : id
+
   // Mock data fallback
-  const mockData = useMockMarketDetail(id)
+  const mockData = useMockMarketDetail(mockId)
 
   // Use live data if this is a contract address and we have data
   const hasLiveData = isContractAddress && !liveMarket.isLoading && liveMarket.totalPool > 0
@@ -96,24 +154,28 @@ export default function MarketDetailPage() {
       <main className="px-5 pb-28">
         {/* Market Type Badge */}
         <MarketHeader
-          icon={mockData.icon}
-          typeLabel={mockData.typeLabel}
-          dateLabel={mockData.dateLabel}
+          icon={detectedType !== null ? (MARKET_TYPE_ICONS[detectedType] ?? mockData.icon) : mockData.icon}
+          typeLabel={detectedType !== null ? (MARKET_TYPE_LABELS[detectedType] ?? mockData.typeLabel) : mockData.typeLabel}
+          dateLabel={apiDetail?.bettingCloseTime
+            ? formatDateLabel(apiDetail.bettingCloseTime, detectedType ?? 2)
+            : mockData.dateLabel}
         />
 
         {/* Market Question */}
         <h1 className="text-[22px] font-bold text-text-primary leading-tight mt-4">
-          {mockData.question}
+          {detectedType !== null ? (MARKET_TYPE_QUESTIONS[detectedType] ?? mockData.question) : mockData.question}
         </h1>
 
         {/* Reference Price */}
         <p className="text-[13px] text-text-muted mt-1.5">
-          {mockData.referenceLabel}:{' '}
+          {detectedType === 0 ? 'APERTURA HOY' : mockData.referenceLabel}:{' '}
           <span className={mockData.referencePriceUp ? 'text-sube-green' : 'text-baja-red'}>
             {mockData.referencePriceUp ? '↗' : '↘'}
           </span>
           <span className="font-semibold text-text-secondary tabular-nums">
-            {formatCurrency(mockData.referencePrice)}
+            {apiDetail?.openingPrice
+              ? formatCurrency(apiDetail.openingPrice)
+              : formatCurrency(mockData.referencePrice)}
           </span>
         </p>
 
