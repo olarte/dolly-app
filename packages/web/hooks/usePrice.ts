@@ -9,6 +9,7 @@ export interface PriceData {
   direction: 'up' | 'down'
   changePercent: string
   pair: string
+  marketOpen: boolean
   updatedAt: string
 }
 
@@ -30,6 +31,7 @@ export function usePrice(pair: string) {
     priceUp: query.data?.priceUp ?? true,
     direction: query.data?.direction ?? 'up',
     changePercent: query.data?.changePercent ?? '+0.00%',
+    marketOpen: query.data?.marketOpen ?? true,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -58,6 +60,35 @@ export function usePriceHistory(pair: string, period: string) {
 
   return {
     data: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+  }
+}
+
+// TRM (Tasa Representativa del Mercado) from Banco de la República
+export interface TRMData {
+  price: number
+  date: string
+  source: string
+  pair: string
+}
+
+export function useTRM(pair: string) {
+  const query = useQuery<TRMData>({
+    queryKey: ['trm', pair],
+    queryFn: async () => {
+      const res = await fetch(`/api/price?pair=${encodeURIComponent(pair)}&source=trm`)
+      if (!res.ok) throw new Error('TRM fetch failed')
+      return res.json()
+    },
+    staleTime: 10 * 60 * 1000,  // 10 minutes (TRM changes at most once/day)
+    refetchInterval: 10 * 60 * 1000,
+  })
+
+  return {
+    rate: query.data?.price ?? 0,
+    date: query.data?.date ?? '',
+    source: query.data?.source ?? '',
     isLoading: query.isLoading,
     isError: query.isError,
   }

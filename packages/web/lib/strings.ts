@@ -12,6 +12,9 @@ export const UI = {
   // Home
   home: {
     livePrice: 'DOLAR EN VIVO',
+    lastClose: 'ÚLTIMO CIERRE',
+    marketClosed: 'MERCADO CERRADO',
+    opensMonday: 'Abre el lunes',
     opening: 'APERTURA',
     closesIn: 'CIERRA EN',
     markets: 'MARKETS',
@@ -38,6 +41,19 @@ export const UI = {
     weekly: 'SEMANAL',
     monthly: 'MENSUAL',
     special: 'ELECCIONES',
+  },
+
+  // Market questions by type
+  marketQuestion: {
+    daily: '¿Cierra hoy más alto que la apertura?',
+    weekly: '¿Cierra la semana más alto que la apertura?',
+    monthly: '¿Cierra el mes más alto que la apertura?',
+  },
+
+  // TRM
+  trm: {
+    source: 'Banco de la República',
+    label: 'TRM OFICIAL',
   },
 
   // Analytics

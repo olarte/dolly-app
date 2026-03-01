@@ -4,7 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { publicClient, getWalletClient } from '@/lib/viem-server'
 import { getClosePrice, priceToOnChain } from '@/lib/price-source'
 import { MARKET_ABI } from '@/lib/contracts'
+import { tryGetTRM } from '@/lib/trm'
 import type { Address } from 'viem'
+
+// Market types
+const MARKET_TYPE_DAILY = 0
+const MARKET_TYPE_WEEKLY = 1
+const MARKET_TYPE_MONTHLY = 2
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request)
@@ -49,7 +55,6 @@ export async function POST(request: NextRequest) {
 
           results.push({ market: market.id, action: 'closed_betting' })
         } else {
-          // Already closed on-chain, sync DB
           await supabase
             .from('markets')
             .update({ status: 'closed' })
@@ -80,7 +85,6 @@ export async function POST(request: NextRequest) {
         })
 
         if (isResolved) {
-          // Sync DB
           const outcome = await publicClient.readContract({
             address: market.contract_address as Address,
             abi: MARKET_ABI,
@@ -113,12 +117,33 @@ export async function POST(request: NextRequest) {
           await publicClient.waitForTransactionReceipt({ hash })
         }
 
-        // Fetch close price
-        const closePrice = await getClosePrice(market.currency_pair)
-        const openingPrice = market.opening_price ?? closePrice
+        // Fetch close price based on market type
+        const marketType = market.market_type ?? MARKET_TYPE_DAILY
+        let closePrice: number
+        let sourceId: string
 
-        // Determine outcome: UP if close > open, DOWN otherwise
-        // On-chain enum: 1 = UP, 2 = DOWN
+        if (marketType === MARKET_TYPE_WEEKLY || marketType === MARKET_TYPE_MONTHLY) {
+          // Weekly/monthly: use TRM for resolution
+          const endDate = new Date(market.end_date)
+          const trmRate = await tryGetTRM(endDate)
+          if (trmRate === null) {
+            // TRM not published yet — skip and retry next cron run
+            results.push({
+              market: market.id,
+              action: 'resolve_skipped',
+              error: `TRM not available yet for ${endDate.toISOString().slice(0, 10)}`,
+            })
+            continue
+          }
+          closePrice = trmRate
+          sourceId = `banrep.gov.co/TRM/${endDate.toISOString().slice(0, 10)}`
+        } else {
+          // Daily: use Twelve Data / live FX
+          closePrice = await getClosePrice(market.currency_pair)
+          sourceId = `twelvedata.com/${new Date().toISOString().slice(0, 10)}`
+        }
+
+        const openingPrice = market.opening_price ?? closePrice
         const outcome = closePrice > openingPrice ? 1 : 2
 
         const walletClient = getWalletClient()
@@ -130,12 +155,11 @@ export async function POST(request: NextRequest) {
             outcome,
             priceToOnChain(openingPrice),
             priceToOnChain(closePrice),
-            `open.er-api.com/${new Date().toISOString().slice(0, 10)}`,
+            sourceId,
           ],
         })
         await publicClient.waitForTransactionReceipt({ hash })
 
-        // Update database
         await supabase
           .from('markets')
           .update({

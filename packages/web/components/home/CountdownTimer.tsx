@@ -8,6 +8,7 @@ interface CountdownTimerProps {
   openingPrice: number
   priceUp: boolean
   targetTime: Date
+  marketOpen?: boolean
 }
 
 function formatCountdown(target: Date): string {
@@ -23,18 +24,30 @@ function formatCountdown(target: Date): string {
   return `${h}:${m}:${s}${period}`
 }
 
-export default function CountdownTimer({ openingPrice, priceUp, targetTime }: CountdownTimerProps) {
+export default function CountdownTimer({ openingPrice, priceUp, targetTime, marketOpen = true }: CountdownTimerProps) {
   const [countdown, setCountdown] = useState(() => formatCountdown(targetTime))
 
   useEffect(() => {
+    if (!marketOpen) return
     const interval = setInterval(() => {
       setCountdown(formatCountdown(targetTime))
     }, 1000)
     return () => clearInterval(interval)
-  }, [targetTime])
+  }, [targetTime, marketOpen])
 
   const arrow = priceUp ? '↗' : '↘'
   const color = priceUp ? 'text-sube-green' : 'text-baja-red'
+
+  if (!marketOpen) {
+    return (
+      <div className="flex items-center justify-center mt-3 px-1">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-text-secondary/10 text-text-secondary text-xs font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />
+          {UI.home.marketClosed} · {UI.home.opensMonday}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-between mt-3 px-1">
