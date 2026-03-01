@@ -54,9 +54,10 @@ export interface MarketDetailData {
   closingTime: Date
 }
 
-function getMarketType(id: string): 'daily' | 'weekly' | 'monthly' {
+function getMarketType(id: string): 'daily' | 'weekly' | 'monthly' | 'special' {
   if (id.startsWith('weekly')) return 'weekly'
   if (id.startsWith('monthly')) return 'monthly'
+  if (id.startsWith('special')) return 'special'
   // Contract addresses or 'daily-*' IDs → daily
   return 'daily'
 }
@@ -135,6 +136,107 @@ function buildDailyMock(): MarketDetailData {
   }
 }
 
+function buildWeeklyMock(): MarketDetailData {
+  const now = new Date()
+  // Find next Friday at 5 PM COT
+  const closingTime = new Date(now)
+  const dayOfWeek = closingTime.getDay()
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7
+  closingTime.setDate(closingTime.getDate() + daysUntilFriday)
+  closingTime.setHours(17, 0, 0, 0)
+
+  // Monday of this week
+  const monday = new Date(now)
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  const friday = new Date(monday)
+  friday.setDate(friday.getDate() + 4)
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
+
+  return {
+    id: 'weekly-1',
+    type: 'weekly',
+    typeLabel: 'MERCADO SEMANAL',
+    dateLabel: `${formatDate(monday).toUpperCase()} – ${formatDate(friday).toUpperCase()}, ${friday.getFullYear()}`,
+    icon: '📈',
+    price: 4148.87,
+    priceUp: true,
+    question: '¿Cierra la semana más alto que la apertura?',
+    referenceLabel: 'TRM APERTURA SEMANA',
+    referencePrice: 4135.20,
+    referencePriceUp: true,
+    sube: { multiplier: 1.72, pool: 780_000 },
+    baja: { multiplier: 2.15, pool: 780_000 },
+    subePercent: 58,
+    bajaPercent: 42,
+    volume: '$14,320,000',
+    probabilityData: PROBABILITY_DATA,
+    rules: {
+      period: `${formatDate(monday)} – ${formatDate(friday)}, ${friday.getFullYear()}`,
+      closeDate: `${formatDate(friday)}, ${friday.getFullYear()} — 4:50 PM COT`,
+      resolutionTime: `${formatDate(friday)}, ${friday.getFullYear()} — 5:00 PM COT`,
+      subeCondition:
+        'SUBE gana si la TRM oficial del viernes es estrictamente mayor que la TRM del lunes de la misma semana.',
+      bajaCondition:
+        'BAJA gana si la TRM oficial del viernes es menor o igual a la TRM del lunes de la misma semana.',
+      details:
+        'Este mercado resuelve basado en la Tasa Representativa del Mercado (TRM) publicada oficialmente por el Banco de la República de Colombia. Se compara la TRM del viernes contra la TRM del lunes para determinar la dirección semanal del dólar.',
+      source: 'Banco de la República',
+      sourceUrl: 'https://www.banrep.gov.co',
+    },
+    holders: [
+      { side: 'sube', holders: 156, percentage: 58 },
+      { side: 'baja', holders: 112, percentage: 42 },
+    ],
+    activity: MOCK_ACTIVITY,
+    closingTime,
+  }
+}
+
+function buildSpecialMock(): MarketDetailData {
+  const closingTime = new Date(2026, 2, 15, 17, 0, 0) // March 15, 2026
+
+  return {
+    id: 'special-1',
+    type: 'special',
+    typeLabel: 'MERCADO ESPECIAL',
+    dateLabel: 'ELECCIONES 2026',
+    icon: '🗳️',
+    price: 4148.87,
+    priceUp: true,
+    question: '¿El dólar sube tras las elecciones?',
+    referenceLabel: 'TRM PRE-ELECCIONES',
+    referencePrice: 4120.00,
+    referencePriceUp: true,
+    sube: { multiplier: 1.45, pool: 2_100_000 },
+    baja: { multiplier: 2.65, pool: 2_100_000 },
+    subePercent: 68,
+    bajaPercent: 32,
+    volume: '$38,500,000',
+    probabilityData: PROBABILITY_DATA,
+    rules: {
+      period: 'Marzo 1 – Marzo 15, 2026',
+      closeDate: 'Marzo 14, 2026 — 5:00 PM COT',
+      resolutionTime: 'Marzo 15, 2026 — 10:00 AM COT',
+      subeCondition:
+        'SUBE gana si la TRM oficial post-elecciones es estrictamente mayor que la TRM del día anterior a las elecciones.',
+      bajaCondition:
+        'BAJA gana si la TRM oficial post-elecciones es menor o igual a la TRM del día anterior a las elecciones.',
+      details:
+        'Este mercado especial resuelve basado en el impacto de las elecciones sobre la tasa de cambio. Se compara la TRM del día hábil siguiente a las elecciones contra la TRM del último día hábil antes de las elecciones.',
+      source: 'Banco de la República',
+      sourceUrl: 'https://www.banrep.gov.co',
+    },
+    holders: [
+      { side: 'sube', holders: 312, percentage: 68 },
+      { side: 'baja', holders: 147, percentage: 32 },
+    ],
+    activity: MOCK_ACTIVITY,
+    closingTime,
+  }
+}
+
 function buildMonthlyMock(): MarketDetailData {
   const now = new Date()
   const closingTime = new Date(now)
@@ -187,10 +289,13 @@ export function useMockMarketDetail(id: string): MarketDetailData {
   switch (type) {
     case 'daily':
       return buildDailyMock()
+    case 'weekly':
+      return buildWeeklyMock()
     case 'monthly':
       return buildMonthlyMock()
-    case 'weekly':
+    case 'special':
+      return buildSpecialMock()
     default:
-      return buildMonthlyMock()
+      return buildDailyMock()
   }
 }
