@@ -2,12 +2,19 @@
 
 import { PrivyProvider } from '@privy-io/react-auth'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { WagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider } from 'wagmi'
 import { useState } from 'react'
 import { wagmiConfig, activeChain } from '@/lib/wagmi'
 import AutoConnect from './AutoConnect'
 
-function InnerProviders({ children }: { children: React.ReactNode }) {
+function InnerProviders({
+  children,
+  usePrivyWagmi,
+}: {
+  children: React.ReactNode
+  usePrivyWagmi: boolean
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -20,12 +27,15 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
       })
   )
 
+  // Use Privy's WagmiProvider when Privy is active, standard wagmi otherwise
+  const WagmiWrapper = usePrivyWagmi ? PrivyWagmiProvider : WagmiProvider
+
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig}>
+      <WagmiWrapper config={wagmiConfig}>
         <AutoConnect />
         {children}
-      </WagmiProvider>
+      </WagmiWrapper>
     </QueryClientProvider>
   )
 }
@@ -35,7 +45,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
 
   // If no Privy app ID is configured, render without Privy (dev mode)
   if (!privyAppId) {
-    return <InnerProviders>{children}</InnerProviders>
+    return <InnerProviders usePrivyWagmi={false}>{children}</InnerProviders>
   }
 
   return (
@@ -56,7 +66,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
         },
       }}
     >
-      <InnerProviders>{children}</InnerProviders>
+      <InnerProviders usePrivyWagmi={true}>{children}</InnerProviders>
     </PrivyProvider>
   )
 }
